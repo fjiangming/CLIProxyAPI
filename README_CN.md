@@ -74,17 +74,121 @@ CLIProxyAPI 用户手册： [https://help.router-for.me/](https://help.router-fo
 
 ## Docker 部署指南
 
+> **方案：Cloudflare Tunnel** —— 不开端口、不管证书、隐藏源站 IP  
 > 使用 GitHub Container Registry (GHCR) 预构建镜像，VPS 上无需拉取源码。
 
-### 前置条件
+**部署前提：** 有一台能 SSH、有公网 IP 且能连外网的 Linux VPS（推荐 Ubuntu 22.04+）
 
-- 一台 Linux VPS（推荐 Ubuntu 22.04+）
-- 已安装 Docker 和 Docker Compose
-- （可选）已配置 Cloudflare Tunnel 或反向代理
+---
 
-### 部署步骤
+### 1. VPS 基础环境配置
 
-#### 1. 创建工作目录与 config.yaml
+#### 1.1 安装和配置 UFW 防火墙
+
+安装 UFW：
+
+```bash
+sudo apt update && sudo apt install -y ufw
+```
+
+配置规则（将 `22/tcp` 替换为你实际的 SSH 端口）：
+
+```bash
+# 默认拒绝所有入站，允许所有出站
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# 仅放行 SSH 端口
+sudo ufw allow 22/tcp comment 'SSH'
+```
+
+启用防火墙：
+
+```bash
+echo "y" | sudo ufw enable
+sudo ufw status verbose
+```
+
+> [!TIP]
+> 因为使用 Cloudflare Tunnel，CPA 的 8317 端口**无需**在 UFW 中放行，Tunnel 会通过内部回环地址连接。
+
+#### 1.2 安装 Docker
+
+卸载可能存在的冲突包：
+
+```bash
+sudo apt remove $(dpkg --get-selections docker.io docker-compose docker-doc podman-docker containerd runc 2>/dev/null | cut -f1) 2>/dev/null
+```
+
+使用官方脚本安装 Docker 并配置免 root 运行：
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+---
+
+### 2. 必备物料获取
+
+#### 2.1 Cloudflare 免费账户
+
+前往 [Cloudflare 官网](https://www.cloudflare.com/) 注册免费账户（支持 Google 账号直接登录）。
+
+#### 2.2 获取可托管到 CF 的域名
+
+**方式一（推荐）：** 在域名销售网站购买，例如 [Spaceship](https://www.spaceship.com/)、[Namesilo](https://www.namesilo.com/) 等。
+
+**方式二（临时）：** 使用免费三级域名，例如 [my.dnshe.com](https://my.dnshe.com)（长期使用建议购买自有二级域名）。
+
+购买/获取后将域名 NS 记录托管到 Cloudflare。
+
+---
+
+### 3. Cloudflare Tunnel 配置
+
+#### 3.1 创建隧道
+
+1. 登录 Cloudflare Dashboard，在首页找到 **Tunnels** 入口
+2. 点击创建一条新隧道（如命名为 `cpa`）
+3. 页面会提供两条安装命令，**复制到 VPS 依次执行**即可安装 `cloudflared` 并连接隧道
+
+#### 3.2 绑定域名到 CPA 服务
+
+在隧道的 **Public Hostname** 页面添加一条记录：
+
+| 字段 | 值 |
+|------|-----|
+| Subdomain | 你想用的子域名（如 `api`） |
+| Domain | 你托管到 CF 的域名 |
+| Service Type | HTTP |
+| Service URL | `localhost:8317` |
+
+保存后 Cloudflare 会自动生成 DNS 记录和 SSL 证书。
+
+#### 3.3 配置 WAF Skip 规则（推荐）
+
+> 防止 OpenAI SDK 等工具访问 API 时被 Cloudflare Bot 防护拦截。
+
+配置路径：CF Dashboard → 你的域名 → **安全性** → **WAF** → **自定义规则** → 创建规则
+
+| 配置项 | 值 |
+|--------|-----|
+| 规则名称 | `Allow API requests` |
+| 字段 | URI 路径 |
+| 运算符 | 开头为 |
+| 值 | `/v1/` |
+| 措施操作 | 跳过 |
+| 跳过组件 | 所有超级自动程序攻击模式规则 |
+
+点击 **部署** 即可生效。
+
+---
+
+### 4. 开始部署 CPA
+
+#### 4.1 创建工作目录与 config.yaml
 
 ```bash
 mkdir -p ~/cpa && cd ~/cpa
@@ -115,7 +219,7 @@ echo "*** 仅显示一次，请立即记录你的明文密钥 ***"
 grep -E '(sk-cpa-|mgt-cpa-)' config.yaml
 ```
 
-#### 2. 创建 docker-compose.yml
+#### 4.2 创建 docker-compose.yml
 
 ```bash
 cat <<'EOF' > docker-compose.yml
@@ -132,20 +236,22 @@ services:
 EOF
 ```
 
-#### 3. 启动服务
+#### 4.3 启动服务
 
 ```bash
 docker compose up -d
 ```
 
-#### 4. 验证
+#### 4.4 验证
 
 - 浏览器访问管理面板：`https://你的域名/management.html`
-- 使用步骤 1 中记录的 `secret-key` 登录
+- 使用步骤 4.1 中记录的 `secret-key` 登录
 
-### 更新
+🎉 **恭喜完成 CPA 部署！**
 
-#### 方式一：保留用量统计更新
+### 5. 更新
+
+#### 5.1 保留用量统计更新
 
 ```bash
 cd ~/cpa/
@@ -162,7 +268,7 @@ bash docker-build.sh --with-usage
 > 此脚本会将 secret-key 保存到 `~/cpa/temp/stats/.api_secret` 以便后续免输入。  
 > 如不想保留明文密钥：`bash docker-build.sh --with-usage && rm -f temp/stats/.api_secret`
 
-#### 方式二：不保留用量统计更新（最简方式）
+#### 5.2 不保留用量统计更新（最简方式）
 
 ```bash
 cd ~/cpa/
@@ -170,7 +276,7 @@ docker compose pull
 docker compose up -d
 ```
 
-### 完整卸载
+### 6. 完整卸载
 
 以下步骤将彻底清理 CPA 的所有数据和容器：
 
