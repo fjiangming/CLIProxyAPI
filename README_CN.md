@@ -72,6 +72,129 @@ GLM CODING PLAN 是专为AI编码打造的订阅套餐，每月最低仅需20元
 
 CLIProxyAPI 用户手册： [https://help.router-for.me/](https://help.router-for.me/cn/)
 
+## Docker 部署指南
+
+> 使用 GitHub Container Registry (GHCR) 预构建镜像，VPS 上无需拉取源码。
+
+### 前置条件
+
+- 一台 Linux VPS（推荐 Ubuntu 22.04+）
+- 已安装 Docker 和 Docker Compose
+- （可选）已配置 Cloudflare Tunnel 或反向代理
+
+### 部署步骤
+
+#### 1. 创建工作目录与 config.yaml
+
+```bash
+mkdir -p ~/cpa && cd ~/cpa
+
+cat <<EOF > config.yaml
+# CPA 配置
+# 如使用 Cloudflare Tunnel，host 必须设为 127.0.0.1
+host: "127.0.0.1"
+port: 8317
+auth-dir: "~/.cli-proxy-api"
+request-retry: 3
+quota-exceeded:
+  switch-project: true
+  switch-preview-model: true
+api-keys:
+  - "sk-cpa-$(tr -dc 'a-z0-9' </dev/urandom | head -c 32)"
+remote-management:
+  allow-remote: true
+  secret-key: "mgt-cpa-$(tr -dc 'a-z0-9' </dev/urandom | head -c 32)"
+  disable-control-panel: false
+logging-to-file: true
+usage-statistics-enabled: true
+logs-max-total-size-mb: 100
+EOF
+
+echo "*** config.yaml 已生成 ***"
+echo "*** 仅显示一次，请立即记录你的明文密钥 ***"
+grep -E '(sk-cpa-|mgt-cpa-)' config.yaml
+```
+
+#### 2. 创建 docker-compose.yml
+
+```bash
+cat <<'EOF' > docker-compose.yml
+services:
+  cli-proxy-api:
+    image: ghcr.io/fjiangming/cli-proxy-api:dev
+    container_name: cli-proxy-api
+    network_mode: host
+    volumes:
+      - ./config.yaml:/CLIProxyAPI/config.yaml
+      - ./auths:/root/.cli-proxy-api
+      - ./logs:/CLIProxyAPI/logs
+    restart: unless-stopped
+EOF
+```
+
+#### 3. 启动服务
+
+```bash
+docker compose up -d
+```
+
+#### 4. 验证
+
+- 浏览器访问管理面板：`https://你的域名/management.html`
+- 使用步骤 1 中记录的 `secret-key` 登录
+
+### 更新
+
+#### 方式一：保留用量统计更新
+
+```bash
+cd ~/cpa/
+
+# 首次需要拉取更新脚本
+wget -q https://raw.githubusercontent.com/fjiangming/CLIProxyAPI/dev/docker-build.sh
+
+bash docker-build.sh --with-usage
+# 选择 1) Run using Pre-built Image
+# 首次使用需输入 secret-key 明文密码
+```
+
+> [!NOTE]
+> 此脚本会将 secret-key 保存到 `~/cpa/temp/stats/.api_secret` 以便后续免输入。  
+> 如不想保留明文密钥：`bash docker-build.sh --with-usage && rm -f temp/stats/.api_secret`
+
+#### 方式二：不保留用量统计更新（最简方式）
+
+```bash
+cd ~/cpa/
+docker compose pull
+docker compose up -d
+```
+
+### 完整卸载
+
+以下步骤将彻底清理 CPA 的所有数据和容器：
+
+```bash
+cd ~/cpa/
+
+# 1. 停止并删除容器
+docker compose down
+
+# 2. 删除拉取的镜像
+docker rmi ghcr.io/fjiangming/cli-proxy-api:dev 2>/dev/null
+
+# 3. 删除所有数据（配置、认证、日志）
+cd ~ && rm -rf ~/cpa
+
+# 4.（可选）清理 Docker 悬挂资源
+docker system prune -f
+```
+
+> [!WARNING]
+> 以上操作不可逆，执行前请确保已备份 `config.yaml` 中的密钥和 `auths/` 中的认证数据。
+
+---
+
 ## 管理 API 文档
 
 请参见 [MANAGEMENT_API_CN.md](https://help.router-for.me/cn/management/api)
