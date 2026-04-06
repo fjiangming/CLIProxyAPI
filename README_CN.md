@@ -75,7 +75,8 @@ CLIProxyAPI 用户手册： [https://help.router-for.me/](https://help.router-fo
 ## Docker 部署指南
 
 > **方案：Cloudflare Tunnel** —— 不开端口、不管证书、隐藏源站 IP  
-> 使用 GitHub Container Registry (GHCR) 预构建镜像，VPS 上无需拉取源码。
+> 使用 GitHub Container Registry (GHCR) 预构建镜像，VPS 上无需拉取源码。  
+> 参考https://linux.do/t/topic/1670317。
 
 **部署前提：** 有一台能 SSH、有公网 IP 且能连外网的 Linux VPS（推荐 Ubuntu 22.04+）
 
@@ -298,6 +299,24 @@ docker system prune -f
 
 > [!WARNING]
 > 以上操作不可逆，执行前请确保已备份 `config.yaml` 中的密钥和 `auths/` 中的认证数据。
+
+### 端口说明
+
+本服务使用 `network_mode: host`，容器直接共享宿主机网络。以下端口需确保未被其他程序占用：
+
+| 端口 | 用途 | 是否必须 | 说明 |
+|------|------|----------|------|
+| **8317** | CPA 主服务（API + 管理面板） | ✅ 必须 | 由 `config.yaml` 中 `port` 字段控制，可修改 |
+| 8085 | Gemini OAuth 登录回调 | ⚠️ 登录时需要 | 仅在 VPS 上触发 Gemini OAuth 登录时临时监听 |
+| 1455 | OpenAI Codex OAuth 登录回调 | ⚠️ 登录时需要 | 仅在 VPS 上触发 Codex OAuth 登录时临时监听 |
+| 54545 | Claude OAuth 登录回调 | ⚠️ 登录时需要 | 仅在 VPS 上触发 Claude OAuth 登录时临时监听 |
+| 51121 | Antigravity OAuth 登录回调 | ⚠️ 登录时需要 | 仅在 VPS 上触发 Antigravity OAuth 登录时临时监听 |
+| 11451 | iFlow OAuth 登录回调 | ⚠️ 登录时需要 | 仅在 VPS 上触发 iFlow OAuth 登录时临时监听 |
+
+> [!NOTE]
+> OAuth 回调端口**不是常驻监听**的，只在触发对应服务的 OAuth 登录操作时临时启动，认证完成后自动关闭。  
+> 如果你不在 VPS 上直接进行 OAuth 登录（如在本地登录后上传 token 文件到 `auths/`），则无需关心这些端口。  
+> 若登录时对应端口被占用，该次 OAuth 登录会失败，需先释放端口后重试。
 
 ---
 
