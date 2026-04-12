@@ -28,38 +28,44 @@ async function injectManagementApp() {
             window.location.hash = '#/oauth';
         }
 
-        const TARGET_ORIGIN = 'https://cpa.fjmooo.cn';
-        const TARGET_URL = TARGET_ORIGIN + '/user-oauth.html#/oauth';
-        let wasOnLoginPage = window.location.hash.startsWith('#/login');
-
-        window.addEventListener('hashchange', () => {
-            const currentHash = window.location.hash;
-            const isOnLogin = currentHash.startsWith('#/login');
-            const isOnOAuth = currentHash.startsWith('#/oauth');
-
-            // 检测登录成功：从 #/login 离开且不再是登录页
-            if (wasOnLoginPage && !isOnLogin) {
-                wasOnLoginPage = false;
-                // 如果不在目标域名上，重定向到正式域名
-                if (window.location.origin !== TARGET_ORIGIN) {
-                    window.location.href = TARGET_URL;
-                    return;
-                }
-            }
-
-            wasOnLoginPage = isOnLogin;
-
-            // 如果不在登录页也必须在 oauth 页
-            if (!isOnLogin && !isOnOAuth) {
-                window.location.hash = '#/oauth';
-            }
-        });
-
         const injectionCode = `
         <script>
         (function() {
-            // 解决 Vue/Axios URL 拦截
-            const originalOpen = XMLHttpRequest.prototype.open;
+            // ── 路由守卫：登录成功后自动跳转 #/oauth ──
+            var TARGET_ORIGIN = 'https://cpa.fjmooo.cn';
+            var TARGET_URL = TARGET_ORIGIN + '/user-oauth.html#/oauth';
+            var wasOnLoginPage = window.location.hash.indexOf('#/login') === 0;
+
+            window.addEventListener('hashchange', function() {
+                var currentHash = window.location.hash;
+                var isOnLogin = currentHash.indexOf('#/login') === 0;
+                var isOnOAuth = currentHash.indexOf('#/oauth') === 0;
+
+                // 检测登录成功：从 #/login 离开且不再是登录页
+                if (wasOnLoginPage && !isOnLogin) {
+                    wasOnLoginPage = false;
+                    // 如果不在目标域名上，重定向到正式域名
+                    if (window.location.origin !== TARGET_ORIGIN) {
+                        window.location.href = TARGET_URL;
+                        return;
+                    }
+                    // 在目标域名上，直接跳 #/oauth
+                    if (!isOnOAuth) {
+                        window.location.hash = '#/oauth';
+                        return;
+                    }
+                }
+
+                wasOnLoginPage = isOnLogin;
+
+                // 如果不在登录页也必须在 oauth 页
+                if (!isOnLogin && !isOnOAuth) {
+                    window.location.hash = '#/oauth';
+                }
+            });
+
+            // ── API 路径代理：/v0/management → /v0/user-oauth ──
+            var originalOpen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function(method, url) {
                 if (typeof url === 'string' && url.includes('/v0/management')) {
                     arguments[1] = url.replace('/v0/management', '/v0/user-oauth');
@@ -67,9 +73,9 @@ async function injectManagementApp() {
                 return originalOpen.apply(this, arguments);
             };
 
-            const originalFetch = window.fetch;
+            var originalFetch = window.fetch;
             window.fetch = async function() {
-                let url = arguments[0];
+                var url = arguments[0];
                 if (typeof url === 'string' && url.includes('/v0/management')) {
                     arguments[0] = url.replace('/v0/management', '/v0/user-oauth');
                 } else if (arguments[0] instanceof Request && arguments[0].url.includes('/v0/management')) {
