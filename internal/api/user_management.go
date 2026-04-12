@@ -47,6 +47,14 @@ func (s *Server) registerUserManagementRoutes() {
 		userOAuth.POST("/oauth-callback", s.mgmt.PostOAuthCallback)
 		userOAuth.GET("/get-auth-status", s.mgmt.GetAuthStatus)
 
+		// Mock config and auth check for management.html bootstrapping
+		userOAuth.GET("/config", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"remote-management": gin.H{"allow-remote": true}})
+		})
+		userOAuth.GET("/check-auth", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		})
+
 		// Read-only: list authenticated accounts
 		userOAuth.GET("/auth-files", s.mgmt.ListAuthFiles)
 	}

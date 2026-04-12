@@ -3,752 +3,150 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OAuth 登录管理</title>
+<title>OAuth 登录</title>
 <style>
+/* 极简登录页样式，风格匹配 management.html */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg-primary:#0d1117;--bg-secondary:#161b22;--bg-card:#1c2128;--bg-input:#0d1117;
-  --border:#30363d;--border-light:#484f58;
-  --text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#6e7681;
-  --accent:#58a6ff;--accent-hover:#79c0ff;--accent-bg:rgba(56,139,253,0.15);
-  --green:#3fb950;--green-bg:rgba(46,160,67,0.15);
-  --red:#f85149;--red-bg:rgba(248,81,73,0.15);
-  --yellow:#d29922;--yellow-bg:rgba(187,128,9,0.15);
-  --purple:#bc8cff;--orange:#f0883e;
-  --radius:8px;--radius-lg:12px;
-  --shadow:0 2px 8px rgba(0,0,0,0.3);
-  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif;
-}
-html{font-size:14px}
-body{font-family:var(--font);background:var(--bg-primary);color:var(--text-primary);min-height:100vh;line-height:1.5}
-a{color:var(--accent);text-decoration:none}
-a:hover{color:var(--accent-hover);text-decoration:underline}
-input,button,select,textarea{font-family:inherit;font-size:inherit}
-button{cursor:pointer}
-.hidden{display:none!important}
-
-/* ═══ Login Page ═══ */
-.login-wrapper{display:flex;min-height:100vh;align-items:center;justify-content:center}
-.login-left{flex:1;display:flex;align-items:center;justify-content:center;background:#000;min-height:100vh;position:relative;overflow:hidden}
-.login-left::after{content:'OAuth';font-size:clamp(4rem,12vw,10rem);font-weight:900;color:rgba(255,255,255,0.08);position:absolute;text-align:center;line-height:1.1;letter-spacing:-0.03em}
-.login-right{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--bg-secondary)}
-.login-card{width:100%;max-width:400px;padding:2.5rem}
-.login-card h1{font-size:1.4rem;font-weight:700;text-align:center;margin-bottom:0.5rem}
-.login-card .subtitle{text-align:center;color:var(--text-secondary);font-size:0.85rem;margin-bottom:2rem}
-.form-group{margin-bottom:1.25rem}
-.form-group label{display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;color:var(--text-secondary)}
-.form-group input{width:100%;padding:0.6rem 0.75rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);outline:none;transition:border-color .2s}
-.form-group input:focus{border-color:var(--accent)}
-.form-group .hint{font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem}
-.login-btn{width:100%;padding:0.7rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-weight:600;font-size:1rem;transition:background .2s,transform .1s}
-.login-btn:hover{background:var(--accent-hover)}
-.login-btn:active{transform:scale(0.98)}
-.login-btn:disabled{opacity:0.5;cursor:not-allowed}
-.login-error{background:var(--red-bg);color:var(--red);padding:0.6rem 0.8rem;border-radius:var(--radius);font-size:0.85rem;margin-bottom:1rem;display:none}
-.checkbox-group{display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem}
-.checkbox-group input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
-.checkbox-group label{font-size:0.85rem;color:var(--text-secondary);cursor:pointer}
-.auto-detect{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;margin-bottom:1.25rem}
-.auto-detect .label{font-size:0.75rem;color:var(--text-muted);margin-bottom:0.2rem}
-.auto-detect .value{font-size:0.9rem;color:var(--text-primary);word-break:break-all}
-.auto-detect .note{font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem}
-
-/* ═══ Main App ═══ */
-.app-wrapper{display:flex;flex-direction:column;min-height:100vh}
-.app-header{background:var(--bg-secondary);border-bottom:1px solid var(--border);padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.app-header .logo{font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:0.5rem}
-.app-header .logo span{color:var(--accent)}
-.header-right{display:flex;align-items:center;gap:1rem}
-.header-right .status{font-size:0.8rem;color:var(--green);display:flex;align-items:center;gap:0.35rem}
-.header-right .status::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
-.header-right .disconnect-btn{padding:0.35rem 0.75rem;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);font-size:0.8rem;transition:all .2s}
-.header-right .disconnect-btn:hover{border-color:var(--red);color:var(--red)}
-
-.app-body{flex:1;padding:1.5rem;max-width:1200px;margin:0 auto;width:100%}
-
-/* Provider Cards */
-.section-title{font-size:1.1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
-.section-title .icon{font-size:1.2rem}
-
-.provider-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;margin-bottom:2rem}
-.provider-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;transition:border-color .2s,box-shadow .2s}
-.provider-card:hover{border-color:var(--border-light);box-shadow:var(--shadow)}
-.provider-card .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem}
-.provider-card .card-header .name{font-weight:700;font-size:1rem;display:flex;align-items:center;gap:0.5rem}
-.provider-card .card-header .badge{font-size:0.7rem;padding:0.15rem 0.45rem;border-radius:4px;font-weight:600}
-.badge-oauth{background:var(--accent-bg);color:var(--accent)}
-.badge-device{background:var(--purple);color:#fff;opacity:0.8}
-.badge-cookie{background:var(--yellow-bg);color:var(--yellow)}
-.provider-card .card-desc{font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.5}
-.provider-card .card-actions{display:flex;gap:0.5rem;flex-wrap:wrap}
-.btn{padding:0.5rem 1rem;border-radius:var(--radius);font-size:0.85rem;font-weight:600;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:0.35rem}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:var(--accent-hover)}
-.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text-secondary)}
-.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.btn .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;display:none}
-.btn.loading .spinner{display:inline-block}
-.btn.loading{pointer-events:none;opacity:0.7}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* OAuth Status Panel */
-.status-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:2rem;display:none}
-.status-panel.active{display:block}
-.status-panel .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-.status-panel .panel-title{font-weight:700;display:flex;align-items:center;gap:0.5rem}
-.status-panel .status-text{font-size:0.85rem;padding:0.4rem 0.8rem;border-radius:var(--radius);display:flex;align-items:center;gap:0.4rem}
-.status-waiting{background:var(--yellow-bg);color:var(--yellow)}
-.status-success{background:var(--green-bg);color:var(--green)}
-.status-error{background:var(--red-bg);color:var(--red)}
-.status-panel .auth-url-box{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;margin-bottom:0.8rem;word-break:break-all;font-size:0.8rem;color:var(--text-secondary);max-height:120px;overflow-y:auto}
-.status-panel .action-row{display:flex;gap:0.5rem;flex-wrap:wrap}
-
-/* iFlow Cookie Input */
-.cookie-input-area{display:none;margin-top:0.8rem}
-.cookie-input-area textarea{width:100%;min-height:80px;padding:0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);resize:vertical;font-family:'Consolas','Monaco',monospace;font-size:0.8rem}
-
-/* Callback URL Input */
-.callback-input{display:none;margin-top:0.8rem}
-.callback-input input{width:100%;padding:0.5rem 0.7rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:0.85rem}
-.callback-input .row{display:flex;gap:0.5rem;margin-top:0.5rem}
-
-/* Auth Files Table */
-.auth-table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
-.auth-table{width:100%;border-collapse:collapse}
-.auth-table th{background:var(--bg-secondary);text-align:left;padding:0.7rem 1rem;font-size:0.8rem;font-weight:600;color:var(--text-secondary);border-bottom:1px solid var(--border);white-space:nowrap}
-.auth-table td{padding:0.65rem 1rem;border-bottom:1px solid var(--border);font-size:0.85rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.auth-table tr:last-child td{border-bottom:none}
-.auth-table tr:hover td{background:rgba(56,139,253,0.04)}
-.auth-table .status-badge{display:inline-flex;align-items:center;gap:0.3rem;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:600}
-.auth-table .status-ok{background:var(--green-bg);color:var(--green)}
-.auth-table .status-err{background:var(--red-bg);color:var(--red)}
-.auth-table .status-disabled{background:var(--yellow-bg);color:var(--yellow)}
-.auth-table .type-badge{background:var(--bg-secondary);border:1px solid var(--border);padding:0.1rem 0.4rem;border-radius:4px;font-size:0.75rem;color:var(--text-secondary)}
-.empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted);font-size:0.9rem}
-.refresh-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem}
-.refresh-bar .count{font-size:0.85rem;color:var(--text-secondary)}
-
-/* Toast */
-.toast{position:fixed;top:20px;right:20px;padding:0.7rem 1.2rem;border-radius:var(--radius);font-size:0.85rem;z-index:999;transform:translateX(120%);transition:transform .3s ease;max-width:400px}
-.toast.show{transform:translateX(0)}
-.toast-success{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,160,67,0.3)}
-.toast-error{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,0.3)}
-.toast-info{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(56,139,253,0.3)}
-
-/* Footer */
-.app-footer{text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;border-top:1px solid var(--border);margin-top:auto}
-
-/* Responsive */
-@media(max-width:900px){
-  .login-left{display:none}
-  .login-right{flex:none;width:100%}
-  .provider-grid{grid-template-columns:1fr}
-}
-@media(max-width:600px){
-  .app-body{padding:1rem}
-  .auth-table th,.auth-table td{padding:0.5rem 0.6rem;font-size:0.8rem}
-}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:2.5rem;width:100%;max-width:400px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+h1{font-size:1.5rem;font-weight:600;margin-bottom:0.5rem;text-align:center}
+p{text-align:center;color:#8b949e;font-size:0.85rem;margin-bottom:2rem}
+.form-group{margin-bottom:1.5rem}
+label{display:block;font-size:0.85rem;margin-bottom:0.5rem;color:#8b949e}
+input[type="password"]{width:100%;padding:0.6rem 0.8rem;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;outline:none;font-size:0.95rem}
+input[type="password"]:focus{border-color:#58a6ff}
+button{width:100%;padding:0.7rem;background:#238636;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:background 0.2s}
+button:hover{background:#2ea043}
+button:disabled{opacity:0.6;cursor:not-allowed}
+.error{color:#f85149;font-size:0.85rem;margin-top:1rem;text-align:center;display:none}
 </style>
 </head>
 <body>
 
-<!-- ═══════ LOGIN PAGE ═══════ -->
-<div id="login-page" class="login-wrapper">
-  <div class="login-left"></div>
-  <div class="login-right">
-    <div class="login-card">
-      <h1>OAuth 登录管理</h1>
-      <p class="subtitle">使用 API Key 连接到 CLI Proxy API</p>
-
-      <div id="login-error" class="login-error"></div>
-
-      <div class="auto-detect">
-        <div class="label">当前地址</div>
-        <div class="value" id="auto-addr"></div>
-        <div class="note">系统将自动使用当前访问地址进行连接</div>
-      </div>
-
-      <div class="checkbox-group">
-        <input type="checkbox" id="custom-addr-toggle">
-        <label for="custom-addr-toggle">自定义连接地址</label>
-      </div>
-
-      <div class="form-group hidden" id="custom-addr-group">
-        <label>API 地址</label>
-        <input type="text" id="input-addr" placeholder="例如: https://api.example.com:8317">
-      </div>
-
-      <div class="form-group">
+<div class="login-card" id="login-container">
+    <h1>认证并进入 OAuth</h1>
+    <p>请输入 API Key (非管理密钥)</p>
+    <div class="form-group">
         <label>API Key</label>
-        <input type="password" id="input-key" placeholder="请输入 API Key（sk-...）">
-      </div>
-
-      <div class="checkbox-group">
-        <input type="checkbox" id="remember-key" checked>
-        <label for="remember-key">记住密钥</label>
-      </div>
-
-      <button class="login-btn" id="login-btn" onclick="doLogin()">连接</button>
+        <input type="password" id="api-key" placeholder="sk-..." autofocus>
     </div>
-  </div>
+    <button id="login-btn" onclick="doLogin()">进入管理面板</button>
+    <div id="error-msg" class="error"></div>
 </div>
-
-<!-- ═══════ MAIN APP ═══════ -->
-<div id="app-page" class="app-wrapper hidden">
-  <header class="app-header">
-    <div class="logo">🔑 <span>OAuth</span> 登录管理</div>
-    <div class="header-right">
-      <div class="status" id="conn-status">已连接</div>
-      <button class="disconnect-btn" onclick="doDisconnect()">断开连接</button>
-    </div>
-  </header>
-
-  <main class="app-body">
-    <!-- OAuth Status Panel (dynamic) -->
-    <div id="oauth-status-panel" class="status-panel">
-      <div class="panel-header">
-        <div class="panel-title">🔄 <span id="oauth-provider-name">OAuth 登录</span></div>
-        <div id="oauth-status-badge" class="status-text status-waiting">⏳ 等待授权...</div>
-      </div>
-      <div id="oauth-url-box" class="auth-url-box hidden"></div>
-      <div id="oauth-device-code" class="auth-url-box hidden" style="font-family:monospace;font-size:1.1rem;text-align:center;letter-spacing:2px;font-weight:700;color:var(--accent)"></div>
-      <div class="action-row">
-        <button class="btn btn-primary" id="oauth-open-btn" onclick="openAuthURL()">🔗 打开授权链接</button>
-        <button class="btn btn-secondary" onclick="cancelOAuth()">取消</button>
-      </div>
-      <!-- Callback URL Input (for redirect-based flows) -->
-      <div id="callback-input" class="callback-input">
-        <input type="text" id="callback-url" placeholder="粘贴回调 URL（redirect_url）...">
-        <div class="row">
-          <button class="btn btn-primary" onclick="submitCallback()">提交回调</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Provider Cards -->
-    <div class="section-title"><span class="icon">🌐</span> 选择 OAuth 提供商</div>
-    <div class="provider-grid">
-      <div class="provider-card">
-        <div class="card-header">
-          <div class="name">🟣 Claude (Anthropic)</div>
-          <span class="badge badge-oauth">OAuth</span>
-        </div>
-        <div class="card-desc">通过 Anthropic OAuth 授权登录 Claude Code 账户</div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="startOAuth('anthropic','Claude')"><span class="spinner"></span>开始授权</button>
-        </div>
-      </div>
-
-      <div class="provider-card">
-        <div class="card-header">
-          <div class="name">🟢 OpenAI Codex</div>
-          <span class="badge badge-device">Device Flow</span>
-        </div>
-        <div class="card-desc">通过 OpenAI 设备授权流程登录 Codex 账户</div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="startOAuth('codex','Codex')"><span class="spinner"></span>开始授权</button>
-        </div>
-      </div>
-
-      <div class="provider-card">
-        <div class="card-header">
-          <div class="name">🔵 Gemini CLI</div>
-          <span class="badge badge-oauth">OAuth</span>
-        </div>
-        <div class="card-desc">通过 Google OAuth 授权登录 Gemini CLI 账户</div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="startOAuth('gemini','Gemini CLI')"><span class="spinner"></span>开始授权</button>
-        </div>
-      </div>
-
-      <div class="provider-card">
-        <div class="card-header">
-          <div class="name">⚡ Antigravity</div>
-          <span class="badge badge-oauth">OAuth</span>
-        </div>
-        <div class="card-desc">通过 Google OAuth 授权登录 Antigravity 账户</div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="startOAuth('antigravity','Antigravity')"><span class="spinner"></span>开始授权</button>
-        </div>
-      </div>
-
-      <div class="provider-card">
-        <div class="card-header">
-          <div class="name">🟠 Qwen Code</div>
-          <span class="badge badge-device">Device Flow</span>
-        </div>
-        <div class="card-desc">通过阿里云设备授权流程登录 Qwen Code 账户</div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="startOAuth('qwen','Qwen')"><span class="spinner"></span>开始授权</button>
-        </div>
-      </div>
-
-      <div class="provider-card">
-        <div class="card-header">
-          <div class="name">🌙 Kimi</div>
-          <span class="badge badge-device">Device Flow</span>
-        </div>
-        <div class="card-desc">通过 Moonshot 设备授权流程登录 Kimi 账户</div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="startOAuth('kimi','Kimi')"><span class="spinner"></span>开始授权</button>
-        </div>
-      </div>
-
-      <div class="provider-card">
-        <div class="card-header">
-          <div class="name">🌊 iFlow</div>
-          <span class="badge badge-oauth">OAuth</span>
-          <span class="badge badge-cookie">Cookie</span>
-        </div>
-        <div class="card-desc">通过 OAuth 或 Cookie 导入登录 iFlow 账户</div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="startOAuth('iflow','iFlow')"><span class="spinner"></span>OAuth 登录</button>
-          <button class="btn btn-secondary" onclick="toggleCookieInput()">🍪 Cookie 导入</button>
-        </div>
-        <div id="iflow-cookie-area" class="cookie-input-area">
-          <textarea id="iflow-cookie" placeholder="粘贴 iFlow Cookie 内容..."></textarea>
-          <div style="margin-top:0.5rem">
-            <button class="btn btn-primary" onclick="submitIFlowCookie()">提交 Cookie</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Auth Files -->
-    <div class="section-title"><span class="icon">📋</span> 已认证账户</div>
-    <div class="refresh-bar">
-      <span class="count" id="auth-count">加载中...</span>
-      <button class="btn btn-secondary" onclick="loadAuthFiles()">🔄 刷新</button>
-    </div>
-    <div class="auth-table-wrap">
-      <table class="auth-table">
-        <thead>
-          <tr>
-            <th>文件</th>
-            <th>类型</th>
-            <th>邮箱 / 账户</th>
-            <th>状态</th>
-            <th>更新时间</th>
-          </tr>
-        </thead>
-        <tbody id="auth-tbody">
-          <tr><td colspan="5" class="empty-state">连接后加载...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </main>
-
-  <footer class="app-footer">
-    OAuth 登录管理 · CLI Proxy API 用户面板
-  </footer>
-</div>
-
-<!-- Toast -->
-<div id="toast" class="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// State
-// ═══════════════════════════════════════════════════════════
-let apiBase = '';
-let apiKey = '';
-let oauthPollTimer = null;
-let currentOAuthState = '';
-let currentOAuthProvider = '';
-let currentAuthURL = '';
+async function doLogin() {
+    const key = document.getElementById('api-key').value.trim();
+    if (!key) return;
 
-// ═══════════════════════════════════════════════════════════
-// Init
-// ═══════════════════════════════════════════════════════════
-(function init() {
-  // Auto-detect API address from current page URL
-  const loc = window.location;
-  const detectedAddr = loc.protocol + '//' + loc.host;
-  document.getElementById('auto-addr').textContent = detectedAddr;
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('error-msg');
+    btn.disabled = true;
+    btn.textContent = '验证中...';
+    err.style.display = 'none';
 
-  // Custom address toggle
-  document.getElementById('custom-addr-toggle').addEventListener('change', function() {
-    document.getElementById('custom-addr-group').classList.toggle('hidden', !this.checked);
-  });
+    try {
+        // 验证 API Key（通过向后端发起任意鉴权请求测试即可，例如这里借用 auth-files）
+        const resp = await fetch('/v0/user-oauth/auth-files', {
+            headers: { 'Authorization': 'Bearer ' + key }
+        });
 
-  // Enter key on input
-  document.getElementById('input-key').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') doLogin();
-  });
-
-  // Try auto-login from saved credentials
-  try {
-    const saved = localStorage.getItem('user-oauth-creds');
-    if (saved) {
-      const creds = JSON.parse(saved);
-      if (creds.key) {
-        document.getElementById('input-key').value = creds.key;
-        if (creds.addr) {
-          document.getElementById('input-addr').value = creds.addr;
-          document.getElementById('custom-addr-toggle').checked = true;
-          document.getElementById('custom-addr-group').classList.remove('hidden');
+        if (!resp.ok) {
+            throw new Error('API Key 无效或后端拒绝访问');
         }
-      }
+
+        // 验证成功，将 Key 保存到 localStorage 让 management.html 能够读取
+        localStorage.setItem('cli_proxy_api_secret', key);
+        
+        // 启动原版 Management HTML 代理注射
+        await injectManagementApp();
+
+    } catch (e) {
+        err.textContent = e.message;
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '进入管理面板';
     }
-  } catch(e) {}
+}
+
+// 如果之前已经有 key，自动尝试直接加载
+(async function autoInit() {
+    const saved = localStorage.getItem('cli_proxy_api_secret');
+    if (saved) {
+        document.getElementById('api-key').value = saved;
+        await doLogin();
+    }
 })();
 
-// ═══════════════════════════════════════════════════════════
-// Login / Disconnect
-// ═══════════════════════════════════════════════════════════
-async function doLogin() {
-  const btn = document.getElementById('login-btn');
-  const errEl = document.getElementById('login-error');
-  errEl.style.display = 'none';
-
-  const useCustom = document.getElementById('custom-addr-toggle').checked;
-  let addr = useCustom
-    ? document.getElementById('input-addr').value.trim()
-    : (window.location.protocol + '//' + window.location.host);
-  const key = document.getElementById('input-key').value.trim();
-
-  if (!key) {
-    errEl.textContent = '请输入 API Key';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  // Normalize address
-  addr = addr.replace(/\/+$/, '');
-  if (!/^https?:\/\//.test(addr)) addr = 'http://' + addr;
-
-  btn.disabled = true;
-  btn.textContent = '连接中...';
-
-  try {
-    // Test connection by listing auth files
-    const resp = await apiFetch(addr, key, '/auth-files');
-    if (!resp.ok) {
-      const data = await resp.json().catch(() => ({}));
-      throw new Error(data.error || `HTTP ${resp.status}`);
-    }
-
-    apiBase = addr;
-    apiKey = key;
-
-    // Save credentials
-    if (document.getElementById('remember-key').checked) {
-      localStorage.setItem('user-oauth-creds', JSON.stringify({
-        addr: useCustom ? addr : '',
-        key: key
-      }));
-    }
-
-    // Switch to app
-    document.getElementById('login-page').classList.add('hidden');
-    document.getElementById('app-page').classList.remove('hidden');
-
-    loadAuthFiles();
-    showToast('连接成功', 'success');
-  } catch(e) {
-    errEl.textContent = '连接失败: ' + e.message;
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '连接';
-  }
-}
-
-function doDisconnect() {
-  apiBase = '';
-  apiKey = '';
-  cancelOAuth();
-  document.getElementById('app-page').classList.add('hidden');
-  document.getElementById('login-page').classList.remove('hidden');
-}
-
-// ═══════════════════════════════════════════════════════════
-// API Helper
-// ═══════════════════════════════════════════════════════════
-function apiFetch(base, key, path, opts = {}) {
-  const url = (base || apiBase) + '/v0/user-oauth' + path;
-  const headers = {
-    'Authorization': 'Bearer ' + (key || apiKey),
-    ...(opts.headers || {})
-  };
-  if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-    opts.body = JSON.stringify(opts.body);
-  }
-  return fetch(url, { ...opts, headers });
-}
-
-// ═══════════════════════════════════════════════════════════
-// OAuth Flow
-// ═══════════════════════════════════════════════════════════
-const PROVIDER_MAP = {
-  anthropic: { endpoint: '/anthropic-auth-url', name: 'Claude (Anthropic)' },
-  codex:     { endpoint: '/codex-auth-url',     name: 'OpenAI Codex' },
-  gemini:    { endpoint: '/gemini-cli-auth-url', name: 'Gemini CLI' },
-  antigravity:{ endpoint: '/antigravity-auth-url', name: 'Antigravity' },
-  qwen:      { endpoint: '/qwen-auth-url',      name: 'Qwen Code' },
-  kimi:      { endpoint: '/kimi-auth-url',       name: 'Kimi' },
-  iflow:     { endpoint: '/iflow-auth-url',      name: 'iFlow' },
-};
-
-async function startOAuth(provider, displayName) {
-  const info = PROVIDER_MAP[provider];
-  if (!info) return;
-
-  // Cancel any ongoing flow
-  cancelOAuth();
-
-  const panel = document.getElementById('oauth-status-panel');
-  const nameEl = document.getElementById('oauth-provider-name');
-  const badge = document.getElementById('oauth-status-badge');
-  const urlBox = document.getElementById('oauth-url-box');
-  const deviceBox = document.getElementById('oauth-device-code');
-  const openBtn = document.getElementById('oauth-open-btn');
-  const callbackInput = document.getElementById('callback-input');
-
-  nameEl.textContent = displayName + ' OAuth 登录';
-  badge.className = 'status-text status-waiting';
-  badge.innerHTML = '⏳ 等待授权...';
-  urlBox.classList.add('hidden');
-  deviceBox.classList.add('hidden');
-  openBtn.classList.remove('hidden');
-  callbackInput.style.display = 'none';
-  document.getElementById('callback-url').value = '';
-  panel.classList.add('active');
-  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-  try {
-    const webui = '?is_webui=1';
-    const resp = await apiFetch(null, null, info.endpoint + webui);
-    const data = await resp.json();
-
-    if (!resp.ok) {
-      throw new Error(data.error || `HTTP ${resp.status}`);
-    }
-
-    currentOAuthProvider = provider;
-
-    // Handle different response shapes
-    if (data.auth_url || data.url || data.verification_uri) {
-      currentAuthURL = data.auth_url || data.url || data.verification_uri || '';
-      currentOAuthState = data.state || '';
-
-      urlBox.textContent = currentAuthURL;
-      urlBox.classList.remove('hidden');
-
-      // Show device code if present (Codex/Qwen/Kimi)
-      if (data.user_code || data.code) {
-        deviceBox.textContent = data.user_code || data.code;
-        deviceBox.classList.remove('hidden');
-      }
-
-      // Show callback URL input for redirect-based flows
-      if (data.state) {
-        callbackInput.style.display = 'block';
-      }
-
-      // Start polling
-      if (currentOAuthState) {
-        startPolling(currentOAuthState);
-      }
-    } else if (data.status === 'ok' || data.status === 'success') {
-      badge.className = 'status-text status-success';
-      badge.innerHTML = '✅ 授权成功';
-      showToast(displayName + ' 登录成功！', 'success');
-      setTimeout(() => { loadAuthFiles(); }, 2000);
-    } else {
-      throw new Error(data.error || '未知响应');
-    }
-  } catch(e) {
-    badge.className = 'status-text status-error';
-    badge.innerHTML = '❌ ' + e.message;
-    showToast('启动 OAuth 失败: ' + e.message, 'error');
-  }
-}
-
-function openAuthURL() {
-  if (currentAuthURL) {
-    window.open(currentAuthURL, '_blank');
-  }
-}
-
-function startPolling(state) {
-  if (oauthPollTimer) clearInterval(oauthPollTimer);
-
-  oauthPollTimer = setInterval(async () => {
+// 通过 JS 加载并动态魔改 management.html
+async function injectManagementApp() {
+    document.getElementById('login-container').innerHTML = '<h2>加载组件中，请稍候...</h2>';
+    
     try {
-      const resp = await apiFetch(null, null, '/get-auth-status?state=' + encodeURIComponent(state));
-      const data = await resp.json();
+        const res = await fetch('/management.html');
+        if (!res.ok) throw new Error('无法加载 management.html (可能正在同步下载中)');
+        let html = await res.text();
 
-      const badge = document.getElementById('oauth-status-badge');
+        // 强制进入 OAuth tab
+        window.location.hash = '#/oauth';
+        
+        // 监听 hash 变化，防止跳转到 config / logs 等界面
+        window.addEventListener('hashchange', () => {
+            if (!window.location.hash.startsWith('#/oauth')) {
+                window.location.hash = '#/oauth';
+            }
+        });
 
-      if (data.status === 'ok') {
-        // Completed successfully
-        clearInterval(oauthPollTimer);
-        oauthPollTimer = null;
-        badge.className = 'status-text status-success';
-        badge.innerHTML = '✅ 授权完成';
-        showToast('OAuth 授权成功！', 'success');
-        setTimeout(() => {
-          loadAuthFiles();
-          document.getElementById('oauth-status-panel').classList.remove('active');
-        }, 3000);
-      } else if (data.status === 'error') {
-        clearInterval(oauthPollTimer);
-        oauthPollTimer = null;
-        badge.className = 'status-text status-error';
-        badge.innerHTML = '❌ ' + (data.error || '授权失败');
-        showToast('OAuth 失败: ' + (data.error || '未知错误'), 'error');
-      }
-      // status === 'wait' -> continue polling
-    } catch(e) {
-      // Network error, keep polling
+        // ============================================
+        // HTTP 拦截：强制把官方的 management 请求路径重定向到我们解耦的 user-oauth 下
+        // ============================================
+        const injectionCode = `
+        <script>
+        (function() {
+            // 解决 Vue/Axios URL 拦截
+            const originalOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url) {
+                if (typeof url === 'string' && url.includes('/v0/management')) {
+                    arguments[1] = url.replace('/v0/management', '/v0/user-oauth');
+                }
+                return originalOpen.apply(this, arguments);
+            };
+
+            const originalFetch = window.fetch;
+            window.fetch = async function() {
+                let url = arguments[0];
+                if (typeof url === 'string' && url.includes('/v0/management')) {
+                    arguments[0] = url.replace('/v0/management', '/v0/user-oauth');
+                } else if (arguments[0] instanceof Request && arguments[0].url.includes('/v0/management')) {
+                    arguments[0] = new Request(arguments[0].url.replace('/v0/management', '/v0/user-oauth'), arguments[0]);
+                }
+                return originalFetch.apply(this, arguments);
+            };
+        })();
+        <\/script>
+        <style>
+             /* 隐藏左侧边栏，独享 OAuth 页面 */
+             .el-aside { display: none !important; }
+             /* 隐藏头部部分敏感和无用的工具栏按钮 */
+             .header-actions { display: none !important; }
+             /* 修复主内容区域布局，避免留白 */
+             .el-main { padding: 24px !important; }
+             .layout-container { display: block !important; }
+        </style>
+        `;
+
+        // 篡改原始 HTML，注入逻辑和样式
+        html = html.replace('</head>', injectionCode + '</head>');
+
+        // 用注射过的 Management.html 完全覆盖当前整个 DOM
+        document.open();
+        document.write(html);
+        document.close();
+
+    } catch (err) {
+        document.getElementById('login-container').innerHTML = 
+            '<h2>加载失败</h2><p>' + err.message + '</p><button onclick="localStorage.removeItem(\\'cli_proxy_api_secret\\');window.location.reload()">重新登录</button>';
     }
-  }, 3000);
-}
-
-async function submitCallback() {
-  const url = document.getElementById('callback-url').value.trim();
-  if (!url) {
-    showToast('请输入回调 URL', 'error');
-    return;
-  }
-
-  try {
-    const resp = await apiFetch(null, null, '/oauth-callback', {
-      method: 'POST',
-      body: {
-        provider: currentOAuthProvider,
-        redirect_url: url,
-        state: currentOAuthState,
-      }
-    });
-    const data = await resp.json();
-    if (data.status === 'ok') {
-      showToast('回调提交成功，等待处理...', 'success');
-    } else {
-      showToast('提交失败: ' + (data.error || '未知错误'), 'error');
-    }
-  } catch(e) {
-    showToast('提交失败: ' + e.message, 'error');
-  }
-}
-
-function cancelOAuth() {
-  if (oauthPollTimer) {
-    clearInterval(oauthPollTimer);
-    oauthPollTimer = null;
-  }
-  currentOAuthState = '';
-  currentOAuthProvider = '';
-  currentAuthURL = '';
-  document.getElementById('oauth-status-panel').classList.remove('active');
-}
-
-// ═══════════════════════════════════════════════════════════
-// iFlow Cookie
-// ═══════════════════════════════════════════════════════════
-function toggleCookieInput() {
-  const el = document.getElementById('iflow-cookie-area');
-  el.style.display = el.style.display === 'block' ? 'none' : 'block';
-}
-
-async function submitIFlowCookie() {
-  const cookie = document.getElementById('iflow-cookie').value.trim();
-  if (!cookie) {
-    showToast('请输入 Cookie 内容', 'error');
-    return;
-  }
-  try {
-    const resp = await apiFetch(null, null, '/iflow-auth-url', {
-      method: 'POST',
-      body: { cookie }
-    });
-    const data = await resp.json();
-    if (resp.ok) {
-      showToast('iFlow Cookie 导入成功！', 'success');
-      document.getElementById('iflow-cookie').value = '';
-      document.getElementById('iflow-cookie-area').style.display = 'none';
-      loadAuthFiles();
-    } else {
-      showToast('导入失败: ' + (data.error || '未知错误'), 'error');
-    }
-  } catch(e) {
-    showToast('导入失败: ' + e.message, 'error');
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// Auth Files List
-// ═══════════════════════════════════════════════════════════
-async function loadAuthFiles() {
-  const tbody = document.getElementById('auth-tbody');
-  const countEl = document.getElementById('auth-count');
-
-  try {
-    const resp = await apiFetch(null, null, '/auth-files');
-    const data = await resp.json();
-
-    if (!resp.ok) throw new Error(data.error || 'Failed');
-
-    const files = data.files || [];
-    countEl.textContent = `共 ${files.length} 个认证文件`;
-
-    if (files.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无认证账户，请通过上方 OAuth 登录添加</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = files.map(f => {
-      const name = f.name || f.id || '-';
-      const type = f.type || f.provider || '-';
-      const email = f.email || f.account || '-';
-      const statusMsg = f.status_message || '';
-      const disabled = f.disabled;
-      const unavailable = f.unavailable;
-
-      let statusHtml;
-      if (disabled) {
-        statusHtml = '<span class="status-badge status-disabled">已禁用</span>';
-      } else if (unavailable || (f.status && f.status !== 'ok' && f.status !== 'ready')) {
-        statusHtml = '<span class="status-badge status-err" title="' + escHtml(statusMsg) + '">' + (statusMsg || '异常') + '</span>';
-      } else {
-        statusHtml = '<span class="status-badge status-ok">正常</span>';
-      }
-
-      const modtime = f.modtime || f.updated_at || '';
-      const timeStr = modtime ? new Date(modtime).toLocaleString('zh-CN') : '-';
-
-      return `<tr>
-        <td title="${escHtml(name)}">${escHtml(name)}</td>
-        <td><span class="type-badge">${escHtml(type)}</span></td>
-        <td title="${escHtml(email)}">${escHtml(email)}</td>
-        <td>${statusHtml}</td>
-        <td>${timeStr}</td>
-      </tr>`;
-    }).join('');
-  } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">加载失败: ' + escHtml(e.message) + '</td></tr>';
-    countEl.textContent = '加载失败';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// Utilities
-// ═══════════════════════════════════════════════════════════
-function escHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
-}
-
-function showToast(msg, type = 'info') {
-  const el = document.getElementById('toast');
-  el.className = 'toast toast-' + type;
-  el.textContent = msg;
-  setTimeout(() => el.classList.add('show'), 10);
-  setTimeout(() => el.classList.remove('show'), 4000);
 }
 </script>
 </body>
