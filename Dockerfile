@@ -24,6 +24,9 @@ COPY --from=builder ./app/CLIProxyAPI /CLIProxyAPI/CLIProxyAPI
 
 COPY config.example.yaml /CLIProxyAPI/config.example.yaml
 
+RUN mkdir -p /CLIProxyAPI/static
+COPY user-oauth.html /CLIProxyAPI/static/user-oauth.html
+
 WORKDIR /CLIProxyAPI
 
 EXPOSE 8317
