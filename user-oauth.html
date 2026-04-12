@@ -27,10 +27,30 @@ async function injectManagementApp() {
         if (!window.location.hash || window.location.hash === '#/') {
             window.location.hash = '#/oauth';
         }
-        
+
+        const TARGET_ORIGIN = 'https://cpa.fjmooo.cn';
+        const TARGET_URL = TARGET_ORIGIN + '/user-oauth.html#/oauth';
+        let wasOnLoginPage = window.location.hash.startsWith('#/login');
+
         window.addEventListener('hashchange', () => {
+            const currentHash = window.location.hash;
+            const isOnLogin = currentHash.startsWith('#/login');
+            const isOnOAuth = currentHash.startsWith('#/oauth');
+
+            // 检测登录成功：从 #/login 离开且不再是登录页
+            if (wasOnLoginPage && !isOnLogin) {
+                wasOnLoginPage = false;
+                // 如果不在目标域名上，重定向到正式域名
+                if (window.location.origin !== TARGET_ORIGIN) {
+                    window.location.href = TARGET_URL;
+                    return;
+                }
+            }
+
+            wasOnLoginPage = isOnLogin;
+
             // 如果不在登录页也必须在 oauth 页
-            if (!window.location.hash.startsWith('#/login') && !window.location.hash.startsWith('#/oauth')) {
+            if (!isOnLogin && !isOnOAuth) {
                 window.location.hash = '#/oauth';
             }
         });
