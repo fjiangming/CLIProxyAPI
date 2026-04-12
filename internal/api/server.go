@@ -303,6 +303,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		s.registerManagementRoutes()
 	}
 
+	s.registerUserManagementRoutes() // [custom] user-level OAuth routes (API Key auth)
+
 	if optionState.keepAliveEnabled {
 		s.enableKeepAlive(optionState.keepAliveTimeout, optionState.keepAliveOnTimeout)
 	}
