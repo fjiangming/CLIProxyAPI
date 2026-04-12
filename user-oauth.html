@@ -145,7 +145,7 @@ async function injectManagementApp() {
 
     } catch (err) {
         document.getElementById('login-container').innerHTML = 
-            \`<h2>加载失败</h2><p>\${err.message}</p><button onclick="localStorage.removeItem('cli_proxy_api_secret');window.location.reload()">重新登录</button>\`;
+            `<h2>加载失败</h2><p>${err.message}</p><button onclick="localStorage.removeItem('cli_proxy_api_secret');window.location.reload()">重新登录</button>`;
     }
 }
 </script>
